@@ -1,0 +1,34 @@
+<?php
+$uid = (int)$u['id']; $bdt = Ledger::wallet($uid, 'BDT'); $usd = Ledger::wallet($uid, 'USD');
+$safe = Cash::safe($uid); $fc = Cash::forecast($uid); $ins = Cash::insights($uid);
+handle('cancel_hold', function () use ($uid) { Pay::cancelHold($uid, (int)$_POST['txn']); return 'Transfer cancelled. Your funds were returned in full.'; });
+$held = rows("SELECT t.*, h.release_at, h.reason, u.name AS to_name FROM transfer_holds h JOIN transactions t ON t.id=h.txn_id JOIN wallets fw ON fw.id=t.from_wallet_id JOIN wallets tw ON tw.id=t.to_wallet_id JOIN users u ON u.id=tw.user_id WHERE h.status='held' AND fw.user_id=? ORDER BY h.release_at", [$uid]);
+$cats = array_map(fn($r) => [$r['category'], (float)$r['total']], Cash::spendByCategory($uid));
+$mi = []; $mo = []; $ml = [];
+for ($i = 5; $i >= 0; $i--) { $k = date('Y-m', strtotime("-$i month")); $ml[] = date('M', strtotime("-$i month")); $mi[$k] = 0; $mo[$k] = 0; }
+foreach (rows("SELECT DATE_FORMAT(e.created_at,'%Y-%m') m, SUM(CASE WHEN e.direction='C' THEN e.amount ELSE 0 END) cin, SUM(CASE WHEN e.direction='D' THEN e.amount ELSE 0 END) cout FROM ledger_entries e JOIN transactions t ON t.id=e.txn_id WHERE e.account_id=? AND t.status NOT IN ('cancelled') AND t.type NOT IN ('conversion','pocket_deposit','pocket_withdraw','round_up') GROUP BY m", [$bdt['account_id']]) as $r) if (isset($mi[$r['m']])) { $mi[$r['m']] = cents($r['cin']); $mo[$r['m']] = cents($r['cout']); }
+$reqs = rows("SELECT r.*, u.name FROM payment_requests r JOIN users u ON u.id=r.requester_id WHERE r.payer_id=? AND r.status='pending' ORDER BY r.id DESC LIMIT 3", [$uid]);
+$appr = rows("SELECT a.*, u.name FROM approval_requests a JOIN approval_policies p ON p.wallet_id=a.wallet_id JOIN approval_policy_approvers pa ON pa.policy_id=p.id AND pa.user_id=? JOIN users u ON u.id=a.requested_by WHERE a.status='pending' AND NOT EXISTS (SELECT 1 FROM approval_votes v WHERE v.request_id=a.id AND v.approver_id=?)", [$uid, $uid]);
+$recent = Activity::fetch($uid, [], 6);
+$alerts = ''; foreach (array_slice($ins, 0, 3) as [$ty, $m]) $alerts .= '<div class="alert ' . ($ty === 'warn' ? 'warn' : ($ty === 'ok' ? 'ok' : 'info')) . '">' . e($m) . '</div>';
+$riskN = (int)val("SELECT COUNT(*) FROM risk_alerts WHERE user_id=? AND status='open' AND created_at>=DATE_SUB(NOW(), INTERVAL 7 DAY)", [$uid]);
+
+echo page_head('Dashboard', 'Hello, ' . explode(' ', $u['name'])[0] . '. Here is where your money stands.', '<a class="btn" href="' . e(url('send')) . '">' . icon('send') . e(t('Send money')) . '</a>');
+echo '<div class="grid g-main"><div class="grid">';
+echo '<section class="card hero"><div class="row"><div><div class="muted">' . e(t('Available balance')) . ' &middot; BDT</div><div class="stat">' . mbal($bdt['balance']) . '</div></div><div><div class="muted">USD (simulated)</div><div class="stat sm">' . mbal($usd['balance'], 'USD') . '</div></div></div>' .
+  ((int)$bdt['frozen'] ? '<div class="alert err" style="margin:12px 0 0">Wallet frozen. Sending is disabled until you unfreeze it in Security.</div>' : '') . '</section>';
+echo '<div class="grid g3">' . card('Safe to spend today', '<div class="stat sm ' . ($safe['safe_c'] < 0 ? 'neg' : 'pos') . '">' . mny(dec(max(0, $safe['daily_c']))) . '</div><p class="hint">per day for the next 30 days &middot; <a href="' . e(url('safe')) . '">how this is calculated</a></p>') .
+  card('Money rules', '<div class="stat sm">' . (int)val("SELECT COUNT(*) FROM money_rules WHERE user_id=? AND status='active'", [$uid]) . '</div><p class="hint">active &middot; <a href="' . e(url('rules')) . '">manage</a></p>') .
+  card('Warnings', '<div class="stat sm ' . ($riskN ? 'neg' : 'pos') . '">' . $riskN . '</div><p class="hint">open risk alerts (7 days) &middot; <a href="' . e(url('security')) . '">review</a></p>') . '</div>';
+if ($held) { $b = ''; foreach ($held as $h) $b .= '<div class="row" style="align-items:center;padding:8px 0;border-top:1px solid var(--line)"><div><strong>' . mny($h['amount']) . '</strong> to ' . e($h['to_name']) . '<div class="hint">On hold: ' . e($h['reason']) . '</div></div><div class="fixed">' . e(t('Time left to cancel')) . ' <span class="countdown" data-countdown="' . strtotime($h['release_at']) . '" data-done-text="Released">--:--</span></div><div class="fixed">' . form_start('cancel_hold', 'class="inline"') . '<input type="hidden" name="txn" value="' . (int)$h['id'] . '">' . btn('Cancel transfer', 'danger sm') . '</form></div></div>'; echo card('Transfers you can still cancel', $b, '', 'flat'); }
+echo card('Cash-flow forecast', '<p class="hint">Projected BDT balance over 30 days (rule-based estimate, not a prediction).</p>' . chart_line($fc['series']) . ($fc['shortfall'] ? '<div class="alert warn" style="margin-top:12px">Projected shortfall on ' . e(fdate($fc['shortfall']['date'], false)) . '. See Safe to spend for ways to avoid it.</div>' : ''), '<a class="btn secondary sm" href="' . e(url('safe')) . '">Details</a>');
+$rows = []; foreach ($recent as $t) $rows[] = [e(fdate($t['created_at'], false)), e(type_label($t['type'])) . '<div class="hint">' . e(Activity::counterparty($t, $uid)) . '</div>', badge($t['status']), '<span class="' . ((float)$t['delta'] < 0 ? 'neg' : ((float)$t['delta'] > 0 ? 'pos' : '')) . '">' . ((float)$t['delta'] > 0 ? '+' : '') . e(money($t['delta'], $t['currency'])) . '</span>'];
+echo card('Recent activity', tbl(['Date', 'Details', 'Status', ['Amount', 'num']], $rows, 'No activity yet. Add demo funds from Wallet to begin.'), '<a class="btn secondary sm" href="' . e(url('activity')) . '">' . e(t('Activity')) . '</a>');
+echo '</div><div class="grid" style="align-content:start">';
+if ($reqs) { $b = ''; foreach ($reqs as $r) $b .= '<div style="padding:6px 0"><strong>' . mny($r['amount'], $r['currency']) . '</strong> from ' . e($r['name']) . '<div class="hint">' . e($r['note']) . '</div></div>'; echo card('Requests', $b, '<a class="btn sm" href="' . e(url('requests')) . '">' . e(t('Pay')) . '</a>'); }
+if ($appr) { echo card('Approvals waiting for you', '<p>' . count($appr) . ' payment(s) need your decision.</p>', '<a class="btn sm" href="' . e(url('family')) . '">Review</a>', 'flat'); }
+echo card('Spending by category', chart_donut($cats));
+echo card('Money in / out', chart_bars($ml, array_values($mi), array_values($mo)));
+if ($safe['bills']) { usort($safe['bills'], fn($a, $b) => strcmp($a['date'], $b['date'])); $b = ''; foreach (array_slice($safe['bills'], 0, 5) as $x) $b .= '<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div>' . e($x['name']) . '<div class="hint">' . e(fdate($x['date'], false)) . '</div></div><div class="fixed">' . mny(dec($x['amount_c'])) . '</div></div>'; echo card('Upcoming bills', $b, '<a class="btn secondary sm" href="' . e(url('recurring')) . '">All</a>'); }
+echo $alerts ? card('Good to know', $alerts) : '';
+echo '</div></div>';

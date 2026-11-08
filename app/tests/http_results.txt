@@ -1,0 +1,28 @@
+PASS  HTTP-01 login page renders with viewport meta, skip-safe structure and demo credentials
+PASS  HTTP-02 protected pages redirect anonymous visitors to login
+PASS  HTTP-03 wrong password shows a generic error, correct login reaches dashboard
+PASS  HTTP-04 login without CSRF token is refused
+PASS  HTTP-05 [tahsin] every page returns 200 with no PHP warnings/notices
+PASS  HTTP-05 [merchant] every page returns 200 with no PHP warnings/notices
+PASS  HTTP-05 [freelancer] every page returns 200 with no PHP warnings/notices
+PASS  HTTP-05 [student] every page returns 200 with no PHP warnings/notices
+PASS  HTTP-05 [uchas] every page returns 200 with no PHP warnings/notices
+PASS  HTTP-06 detail pages (group, escrow, invoice, dispute, receipt) render for tahsin with no warnings
+PASS  HTTP-07 merchant pages and merchant tabs render
+PASS  HTTP-08 admin pages render for admin; non-admin gets redirected (role-based access)
+PASS  HTTP-09 non-admin cannot decide disputes or read other users receipts/invoices
+PASS  HTTP-10 POST with a forged CSRF token is rejected and nothing is sent
+PASS  HTTP-11 registration → login → add funds → send to new recipient is held → cancel returns funds
+PASS  HTTP-12 wrong PIN is refused and no money moves
+PASS  HTTP-13 XSS: hostile display name is escaped everywhere it is shown
+PASS  HTTP-14 SQL injection in search filter and receipt ref is harmless
+PASS  HTTP-15 CSV export has correct headers, BOM, columns and formula-injection guard
+PASS  HTTP-16 PDF statement and PDF receipt are valid PDFs
+PASS  HTTP-17 Bangla interface: switching language renders Bangla labels and Bengali-numeral dates
+PASS  HTTP-18 merchant QR checkout end to end: create, QR present, customer pays once, second attempt refused
+PASS  HTTP-19 device management: revoking another device ends that session immediately; current session survives
+PASS  HTTP-20 API: auth, 401 without token, idempotency header required, duplicate-safe transfer, role-protected reconciliation
+PASS  HTTP-21 responsive CSS and accessibility basics present (breakpoints, focus styles, skip link, labels, landmarks)
+PASS  HTTP-22 security headers set; no stack traces leak on bad input
+PASS  HTTP-23 session cookie is HttpOnly + SameSite
+TOTAL 27  PASSED 27  FAILED 0

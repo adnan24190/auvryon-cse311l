@@ -1,0 +1,122 @@
+PASS  REG-01 weak password rejected
+PASS  REG-02 invalid email rejected
+PASS  REG-03 invalid PIN rejected
+PASS  REG-04 duplicate email rejected
+PASS  REG-05 registration creates BDT and USD wallets with ledger accounts
+PASS  REG-06 password and PIN are stored hashed (not plaintext)
+PASS  AUTH-01 wrong password rejected
+PASS  AUTH-02 correct login returns user
+PASS  AUTH-03 account locks after 5 wrong passwords
+PASS  AUTH-04 login rate limit engages
+PASS  AUTH-05 wrong PIN rejected and PIN attempts limited
+PASS  AUTH-06 API bearer token resolves user, revoked token does not
+PASS  XFER-01 insufficient funds: rejected, nothing changes, no stray rows
+PASS  XFER-02 amount must be positive and well-formed
+PASS  XFER-03 cannot pay yourself
+PASS  XFER-04 immediate transfer posts amount + fee correctly
+PASS  XFER-05 fee schedule: 0.5% above the minimum
+PASS  XFER-06 per-transaction limit enforced
+PASS  XFER-07 daily limit enforced
+PASS  XFER-08 preview shows fee, total, hold decision and risk flags
+PASS  HOLD-01 first-time recipient goes on hold; funds leave sender, sit in HOLD account
+PASS  HOLD-02 recipient cannot spend held funds (balance still zero)
+PASS  HOLD-03 non-sender cannot cancel
+PASS  HOLD-04 cancel in window returns amount AND fee in full
+PASS  HOLD-05 second cancel is refused and never refunds twice
+PASS  HOLD-06 window elapsing releases funds to recipient exactly once
+PASS  HOLD-07 cannot cancel after the window closes
+PASS  HOLD-08 high-value payment to a known recipient is also held
+PASS  HOLD-09 known recipient, normal amount: no hold
+PASS  IDEM-01 repeating the same key never debits twice
+PASS  CONC-01 8 parallel requests with ONE idempotency key create exactly one transaction
+PASS  CONC-02 parallel double-spend: 10 workers x 300 against a 1000 balance -> max 3 succeed, never negative
+PASS  CONC-03 6 parallel cancels of one hold: exactly one wins, funds restored once
+PASS  CONC-04 cancel racing the release job: never both
+PASS  CONC-05 two parallel release jobs release a hold once
+PASS  FRZ-01 frozen wallet cannot send; unfreezing restores sending
+PASS  FRZ-02 frozen recipient cannot receive
+PASS  REQ-01 request → pay marks paid; cannot be paid twice
+PASS  REQ-02 only the payer may pay; decline works
+PASS  MER-01 checkout pays merchant minus 1% fee, fee to revenue account, customer pays gross
+PASS  MER-02 paid checkout cannot be paid again
+PASS  MER-03 expired checkout refused
+PASS  MER-04 5 parallel payers of one checkout: exactly one payment
+PASS  GRP-01 equal split distributes remainder cents and sums exactly
+PASS  GRP-02 custom split must sum to the total
+PASS  GRP-03 percent split rounds with largest-remainder and sums exactly
+PASS  GRP-04 expense creates splits and correct net balances
+PASS  GRP-05 non-member cannot add expenses
+PASS  GRP-06 settlement moves real money, updates net, cannot exceed what is owed
+PASS  GRP-07 settlement is idempotent
+PASS  GRP-08 optimisation: exact DP matches brute-force minimum on 300 random zero-sum cases
+PASS  GRP-09 greedy fallback (13+ members) still clears every balance within n-1 transfers
+PASS  GRP-10 shared group budget tracks the group spend
+PASS  IOU-01 partial repayments, status progression, overpay refused
+PASS  IOU-02 reminders are sent once per due date
+PASS  ESC-01 funding moves money into the separate escrow account
+PASS  ESC-02 only the buyer funds; funding twice refused
+PASS  ESC-03 only buyer releases; seller gets amount minus fee
+PASS  ESC-04 released milestone cannot be released or refunded again
+PASS  ESC-05 8 parallel releases of one milestone: single payout
+PASS  ESC-06 seller voluntary refund returns full amount to buyer
+PASS  ESC-07 dispute → admin refund returns held funds; dispute closed with timeline
+PASS  ESC-08 dispute → admin release pays the seller minus fee
+PASS  ESC-09 non-participant cannot dispute or read evidence rights
+PASS  INV-01 invoice total = sum of line items
+PASS  INV-02 partial payment reconciles automatically (status partial, due reduced)
+PASS  INV-03 overpayment refused
+PASS  INV-04 same idempotency key does not double-pay
+PASS  INV-05 5 parallel payments of 300 vs 750 outstanding: total paid never exceeds invoice
+PASS  INV-06 paying in full marks paid and blocks further payment
+PASS  INV-07 issuer cannot pay their own invoice
+PASS  RULE-01 scheduled transfer runs once per scheduled date even if triggered twice
+PASS  RULE-02 two parallel runners cannot double-execute a rule run
+PASS  RULE-03 failing rule is logged, retried, then marked failed after 3 failures
+PASS  RULE-04 income allocation sends the percentage to the pocket exactly once per income event
+PASS  RULE-05 round-up moves the spare change to the pocket
+PASS  RULE-06 low-balance alert fires once per day
+PASS  TOK-01 token is stored hashed, never plaintext
+PASS  TOK-02 merchant charge within limits is approved and posted
+PASS  TOK-03 per-charge and monthly limits decline (ghost-charge protection) and raise an alert
+PASS  TOK-04 paused token declines; resumed token works; cancelled token declines forever
+PASS  TOK-05 another merchant cannot use the token
+PASS  OFF-01 issue → queue shows NOT settled; balance unchanged until sync
+PASS  OFF-02 sync settles once with fee, and balance validation applies
+PASS  OFF-03 replaying the same token is refused and flagged
+PASS  OFF-04 tampered token is rejected at queue time
+PASS  OFF-05 token issued for one merchant cannot be queued by another
+PASS  OFF-06 expired token refused at sync
+PASS  OFF-07 conflict: payer spent the money before sync → rejected, nothing charged
+PASS  OFF-08 cannot issue more outstanding tokens than the balance
+PASS  OFF-09 parallel syncs of the same queue settle each token once
+PASS  FX-01 BDT→USD uses the simulated dated rate, shows gross, fee, net; ledger balances per currency
+PASS  FX-02 USD→BDT conversion and duplicate protection
+PASS  FX-03 insufficient currency balance refused
+PASS  APP-01 payment above the threshold is NOT executed; creates an approval request
+PASS  APP-02 below the threshold executes normally
+PASS  APP-03 non-approver cannot vote; one approval is not enough
+PASS  APP-04 same approver cannot vote twice; second approver executes the payment once
+PASS  APP-05 a rejection stops the payment and closes the request
+PASS  APP-06 parallel final approvals execute the payment once
+PASS  DEP-01 guardian per-transaction limit enforced
+PASS  DEP-02 guardian daily limit enforced
+PASS  DEP-03 blocked category refused
+PASS  DEP-04 blocked merchant refused; paused guardian control blocks everything
+PASS  REF-01 refund reverses a transfer incl. fee; second refund impossible (service + DB unique)
+PASS  REF-02 8 parallel refunds of one transaction: exactly one succeeds
+PASS  REF-03 refund fails atomically if the recipient already spent the money
+PASS  DSP-01 transaction dispute: only participants open; duplicates blocked; admin refund resolves
+PASS  CASH-01 safe-to-spend arithmetic: balance - bills - savings plan - buffer (income excluded from conservative figure)
+PASS  CASH-02 forecast flags a shortfall on the right date with assumptions listed
+PASS  CASH-03 no shortfall when funds cover bills
+PASS  CASH-04 duplicate bill payment is flagged and blocked unless overridden
+PASS  CASH-05 paying a monthly bill advances next due date by one month
+PASS  POCK-01 pocket deposit/withdraw moves value between wallet and pocket ledger accounts
+PASS  POCK-02 a user cannot touch another user's pocket
+PASS  DB-01 negative wallet balance is impossible even by direct SQL (CHECK constraint)
+PASS  DB-02 unbalanced ledger posting is refused by the posting engine
+PASS  DB-03 failed posting leaves no orphan transaction (savepoint/rollback)
+PASS  DB-04 SQL injection attempt in recipient field is treated as data
+PASS  LED-01 FINAL: all ledger invariants hold after the entire suite
+PASS  LED-02 every wallet balance equals the sum of its ledger entries
+TOTAL 121  PASSED 121  FAILED 0
